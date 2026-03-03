@@ -19,7 +19,12 @@ class AudioRepositoryImpl implements AudioRepository
       String filePath = result.files.single.path!;
       String fileName = result.files.single.name;
 
+      // 3. Empaquetamos los datos 
+      //por ahora solo pongo 0 minutos pero luego lo hara FFmpeg
+      return AudioClass(path: filePath, name: fileName, duration: const Duration(minutes: 0));
     }
+    // si cancela la ventana
+    return null;
   }
 
 }
