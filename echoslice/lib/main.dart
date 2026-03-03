@@ -18,7 +18,7 @@ class EchoSliceApp extends StatelessWidget{
           seedColor: Colors.deepPurple,
           brightness : Brightness.dark, //Modo oscuro god
         ),
-        useMaterial3: true;
+        useMaterial3: true,
       ),
       home: const HomePage(), // se llama la pantalla principal.
     );
