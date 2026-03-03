@@ -14,7 +14,8 @@ class SplitAudioUsecase {
       if (endMinutes > totalDuration.inMinutes) 
       {
         endMinutes = totalDuration.inMinutes;
-      }
+      } 
+      // El if sirve para que si se pasase de los minutos totales del audio que se le entrega no siga mas
 
       segment.add({
         'start': Duration(minutes: startMinutes),
