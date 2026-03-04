@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../domain/entities/audio_class.dart';
 import '../../domain/usecases/split_audio_usecase.dart';
 import '../../data/services/audio_cutter_service.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -20,6 +22,8 @@ class _HomePageState extends State<HomePage> {
   List<String> pedazosCalculados = [];
   final carnicero = AudioCutterService();
   bool estaCortando = false; // Para mostrar una ruedita de carga
+  String textoProgreso = ""; // <--- NUEVO: Para avisarte qué está haciendo
+
 
   @override
   Widget build(BuildContext context) {
@@ -130,16 +134,47 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 10),
 
               // EL GRAN BOTÓN DE CORTE
+              // EL GRAN BOTÓN DE CORTE ACTUALIZADO
+              // EL GRAN BOTÓN DE CORTE INTELIGENTE Y ORGANIZADO
               estaCortando 
-                ? const CircularProgressIndicator() // Si está cortando, mostramos la ruedita
+                ? Column(
+                    children: [
+                      const CircularProgressIndicator(color: Colors.amber),
+                      const SizedBox(height: 15),
+                      Text(
+                        textoProgreso, 
+                        style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  )
                 : ElevatedButton.icon(
                     onPressed: () async {
-                      setState(() { estaCortando = true; }); // Encendemos la ruedita
+                      setState(() { 
+                        estaCortando = true; 
+                        textoProgreso = "Creando carpeta para tu clase...";
+                      });
 
-                      int duracionPedazo = 15 * 60; // 15 minutos en segundos
+                      // 1. Limpiamos el nombre original (le quitamos el .mp3 o .m4a)
+                      String nombreLimpio = miAudioSeleccionado!.name.split('.').first;
+                      
+                      // 2. Definimos la ruta base (Ej: Descargas/EchoSlice/Clase_PW_01)
+                      String rutaBase = '/storage/emulated/0/Download/EchoSlice/$nombreLimpio';
+                      String carpetaDestino = rutaBase;
+                      
+                      // 3. LA INTELIGENCIA: Verificamos si ya existe. Si sí, le sumamos _1, _2, etc.
+                      int contador = 1;
+                      while (await Directory(carpetaDestino).exists()) {
+                        carpetaDestino = '${rutaBase}_$contador';
+                        contador++;
+                      }
+
+                      // 4. Creamos la carpeta final con el nombre único
+                      await Directory(carpetaDestino).create(recursive: true);
+
+                      int duracionPedazo = 15 * 60; 
                       int segundosTotales = miAudioSeleccionado!.durationInSeconds;
 
-                      // Ciclo for para cortar cada pedazo
                       for (int i = 0; i < segundosTotales; i += duracionPedazo) {
                         int inicio = i;
                         int fin = i + duracionPedazo;
@@ -147,25 +182,34 @@ class _HomePageState extends State<HomePage> {
 
                         int numeroDeParte = (i ~/ duracionPedazo) + 1;
 
-                        // Mandamos a llamar al Carnicero
+                        setState(() { 
+                          textoProgreso = "Cocinando parte $numeroDeParte de ${pedazosCalculados.length}...\n(Si Android lanza advertencia, presiona 'Espera')";
+                        });
+                        
+                        // Respiro de medio segundo para que la pantalla se actualice
+                        await Future.delayed(const Duration(milliseconds: 500));
+
+                        // 5. MANDAMOS A CORTAR DIRECTO A SU NUEVA CARPETA EXCLUSIVA
                         await carnicero.cortarPedazo(
                           miAudioSeleccionado!.path,
                           inicio,
                           fin,
                           miAudioSeleccionado!.name,
                           numeroDeParte,
+                          carpetaDestino, // <--- Va directo a su subcarpeta
                         );
                       }
 
-                      setState(() { estaCortando = false; }); // Apagamos la ruedita
+                      setState(() { estaCortando = false; }); 
                       
-                      // ¡Avisamos que terminó!
+                      // Mostramos la ruta final en el mensajito verde
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ ¡Audio rebanado con éxito! Revisa tus documentos.'),
+                          SnackBar(
+                            content: Text('✅ ¡Éxito! Audios guardados en:\n$carpetaDestino'),
                             backgroundColor: Colors.green,
                             behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 8),
                           ),
                         );
                       }
@@ -178,8 +222,7 @@ class _HomePageState extends State<HomePage> {
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                     ),
                   ),
-                  const SizedBox(height: 20),
-              ]
+              ], // Fin del bloque "if pedazosCalculados"
             ], // Fin del bloque "if (miAudioSeleccionado != null)"
           ],
         ),
