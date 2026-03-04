@@ -1,29 +1,24 @@
-class SplitAudioUsecase {
-  static const int segmentDuration = 15; 
+class SplitAudioUseCase {
+  List<String> calcularFragmentos(int segundosTotales) {
+    List<String> fragmentos = [];
+    int duracionPedazo = 15 * 60; // 15 minutos en segundos (900)
 
-  //Con esta funcion checare cuantos fragmentos se necesitan 
-  List <Map<String, Duration>> calculateSegments (Duration totalDuration) 
-  {
-    List<Map<String, Duration>> segment  = [];
-    int startMinutes = 0;
+    for (int i = 0; i < segundosTotales; i += duracionPedazo) {
+      int inicio = i;
+      int fin = i + duracionPedazo;
+      
+      // Si el último pedazo es más corto de 15 minutos, lo ajustamos al final real
+      if (fin > segundosTotales) {
+        fin = segundosTotales;
+      }
 
-    while(startMinutes < totalDuration.inMinutes)
-    {
-      int endMinutes = startMinutes + segmentDuration;
-
-      if (endMinutes > totalDuration.inMinutes) 
-      {
-        endMinutes = totalDuration.inMinutes;
-      } 
-      // El if sirve para que si se pasase de los minutos totales del audio que se le entrega no siga mas
-
-      segment.add({
-        'start': Duration(minutes: startMinutes),
-        'end': Duration(minutes: endMinutes)
-      });
-
-      startMinutes = endMinutes;
+      // Convertimos los segundos a texto bonito
+      String textoInicio = '${inicio ~/ 60}m ${inicio % 60}s';
+      String textoFin = '${fin ~/ 60}m ${fin % 60}s';
+      
+      fragmentos.add('Parte ${fragmentos.length + 1}: $textoInicio ➡️ $textoFin');
     }
-    return segment;
-  } 
+    
+    return fragmentos;
+  }
 }

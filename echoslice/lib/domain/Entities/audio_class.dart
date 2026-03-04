@@ -1,11 +1,11 @@
 class AudioClass {
   final String path;
   final String name;
-  final Duration duration;
+  final int durationInSeconds; 
 
   AudioClass({
     required this.path,
     required this.name,
-    required this.duration,
+    required this.durationInSeconds,
   });
 }

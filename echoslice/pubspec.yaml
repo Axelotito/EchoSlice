@@ -36,7 +36,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   file_picker: ^8.0.0            # Para elegir tus audios
   #ffmpeg_kit_flutter_audio: ^5.1.0 # El motor para cortar el audio
-  path_provider: ^2.1.2         # Para saber dónde guardar los archivos
+  path_provider: ^2.1.5         # Para saber dónde guardar los archivos
+  just_audio: ^0.10.5
+  simple_audio_trimmer: ^0.1.4
 
 dev_dependencies:
   flutter_test:

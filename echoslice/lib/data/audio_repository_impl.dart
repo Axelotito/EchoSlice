@@ -1,30 +1,43 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart'; // <--- NUEVA HERRAMIENTA IMPORTADA
 import '../../domain/entities/audio_class.dart';
 import '../../domain/repositories/audio_repository.dart';
 
-class AudioRepositoryImpl implements AudioRepository 
-{
+class AudioRepositoryImpl implements AudioRepository {
   @override
-  Future<AudioClass?> pickAudioFile() async
-  {
-    // 1. abrimos el explorador de archivos del celular
+  Future<AudioClass?> pickAudioFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.audio, // Esto hara que no puedas Escoger otra cosa que no sea un archivo de audio
+      type: FileType.audio, 
     );
 
-    //2. Si el usuario no es stupid uwu y no cancelo el proceso
-    if (result != null  && result.files.single.path != null) {
+    if (result != null && result.files.single.path != null) {
+      final path = result.files.single.path!;
+      final name = result.files.single.name;
+      
+      // --- LA MAGIA DEL CRONÓMETRO EMPIEZA AQUÍ ---
+      final player = AudioPlayer(); // Creamos un lector invisible
+      Duration? duration = Duration.zero;
+      
+      try {
+        // Le pedimos que lea el archivo y nos diga cuánto dura
+        duration = await player.setFilePath(path);
+      } catch (e) {
+        print("Error al leer el tiempo del audio: $e");
+      }
+      
+      await player.dispose(); // Destruimos el lector para no gastar memoria RAM
+      
+      // Convertimos el tiempo a segundos totales (si falla, ponemos 0)
+      final int segundosReales = duration?.inSeconds ?? 0;
+      // ---------------------------------------------
 
-      String filePath = result.files.single.path!;
-      String fileName = result.files.single.name;
-
-      // 3. Empaquetamos los datos 
-      //por ahora solo pongo 0 minutos pero luego lo hara FFmpeg
-      return AudioClass(path: filePath, name: fileName, duration: const Duration(minutes: 0));
+      return AudioClass(
+        path: path, 
+        name: name, 
+        durationInSeconds: segundosReales // ¡Adiós al cero, ahora es real!
+      ); 
     }
-    // si cancela la ventana
+    
     return null;
   }
-
 }
