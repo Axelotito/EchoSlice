@@ -1,10 +1,9 @@
+import 'dart:io';
 import 'package:echoslice/data/audio_repository_impl.dart';
 import 'package:flutter/material.dart';
 import '../../domain/entities/audio_class.dart';
 import '../../domain/usecases/split_audio_usecase.dart';
 import '../../data/services/audio_cutter_service.dart';
-import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,21 +14,34 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final audioRepository = AudioRepositoryImpl();
-  
-  // Aquí guardaremos el audio temporalmente en la memoria de la pantalla
   AudioClass? miAudioSeleccionado;
   final cerebroCortes = SplitAudioUseCase();
   List<String> pedazosCalculados = [];
   final carnicero = AudioCutterService();
-  bool estaCortando = false; // Para mostrar una ruedita de carga
-  String textoProgreso = ""; // <--- NUEVO: Para avisarte qué está haciendo
+  
+  bool estaCortando = false; 
+  String textoProgreso = ""; 
+  
+  // ¡LA NUEVA MEMORIA! Empezamos con 15 minutos por defecto
+  int minutosSeleccionados = 15; 
 
+  // Esta función recalcula la lista si cambiamos el tiempo y ya hay un audio
+  void _recalcularLista() {
+    if (miAudioSeleccionado != null) {
+      setState(() {
+        pedazosCalculados = cerebroCortes.calcularFragmentos(
+          miAudioSeleccionado!.durationInSeconds, 
+          minutosSeleccionados // Le pasamos la nueva variable al cerebro
+        );
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('EchoSlice 🎧'),
+        title: const Text('EchoSlice v2.0 🎧'), // ¡Actualizamos el título!
         centerTitle: true,
         elevation: 2,
       ),
@@ -37,16 +49,43 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            
+            // --- EL MENÚ DESPLEGABLE (Dropdown) ---
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Cortar en pedazos de: ', style: TextStyle(fontSize: 16)),
+                DropdownButton<int>(
+                  value: minutosSeleccionados,
+                  items: const [
+                    DropdownMenuItem(value: 5, child: Text('5 minutos')),
+                    DropdownMenuItem(value: 10, child: Text('10 minutos')),
+                    DropdownMenuItem(value: 15, child: Text('15 minutos')),
+                    DropdownMenuItem(value: 20, child: Text('20 minutos')),
+                    DropdownMenuItem(value: 30, child: Text('30 minutos')),
+                    DropdownMenuItem(value: 60, child: Text('1 Hora')),
+                  ],
+                  onChanged: (int? nuevoValor) {
+                    if (nuevoValor != null) {
+                      setState(() {
+                        minutosSeleccionados = nuevoValor;
+                      });
+                      _recalcularLista(); // Si cambiamos el tiempo, actualizamos la lista visual
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
             ElevatedButton.icon(
               onPressed: () async {
                 final audioFile = await audioRepository.pickAudioFile();
-
                 if (audioFile != null) {
                   setState(() {
                     miAudioSeleccionado = audioFile;
-                    // Le mandamos el tiempo al cerebro y nos devuelve la lista
-                    pedazosCalculados = cerebroCortes.calcularFragmentos(audioFile.durationInSeconds);
                   });
+                  _recalcularLista(); // Calculamos la lista la primera vez
                 }
               },
               icon: const Icon(Icons.folder_open, size: 28),
@@ -59,18 +98,9 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             
-            // Un espacio invisible para separar
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
 
-            // Si ya seleccionamos un audio, mostramos esta tarjeta en la pantalla
             if (miAudioSeleccionado != null) ...[
-              const Text(
-                'Clase lista para procesar:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey),
-              ),
-              const SizedBox(height: 10),
-              
-              // --- INICIO DE LA CAJA MORADA ---
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -95,7 +125,6 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        // Aquí hacemos las matemáticas rápidas para que se vea como "45m 20s"
                         Text(
                           'Duración: ${miAudioSeleccionado!.durationInSeconds ~/ 60}m ${miAudioSeleccionado!.durationInSeconds % 60}s',
                           style: const TextStyle(color: Colors.greenAccent),
@@ -105,17 +134,14 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              // --- FIN DE LA CAJA MORADA ---
               
               const SizedBox(height: 20),
             
-              // Si hay pedazos calculados, los mostramos DEBAJO de la caja morada
-              // Si hay pedazos calculados, los mostramos
             if (pedazosCalculados.isNotEmpty) ...[
-              const Text('Cortes de 15 minutos:', style: TextStyle(fontWeight: FontWeight.bold)),
+              // El texto ahora es dinámico
+              Text('Cortes de $minutosSeleccionados minutos:', style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               
-              // ¡Arreglo visual! Expanded hace que tome el espacio necesario sin cortarse
               Expanded(
                 child: ListView.builder(
                   itemCount: pedazosCalculados.length,
@@ -133,9 +159,6 @@ class _HomePageState extends State<HomePage> {
               
               const SizedBox(height: 10),
 
-              // EL GRAN BOTÓN DE CORTE
-              // EL GRAN BOTÓN DE CORTE ACTUALIZADO
-              // EL GRAN BOTÓN DE CORTE INTELIGENTE Y ORGANIZADO
               estaCortando 
                 ? Column(
                     children: [
@@ -155,24 +178,20 @@ class _HomePageState extends State<HomePage> {
                         textoProgreso = "Creando carpeta para tu clase...";
                       });
 
-                      // 1. Limpiamos el nombre original (le quitamos el .mp3 o .m4a)
                       String nombreLimpio = miAudioSeleccionado!.name.split('.').first;
-                      
-                      // 2. Definimos la ruta base (Ej: Descargas/EchoSlice/Clase_PW_01)
                       String rutaBase = '/storage/emulated/0/Download/EchoSlice/$nombreLimpio';
                       String carpetaDestino = rutaBase;
                       
-                      // 3. LA INTELIGENCIA: Verificamos si ya existe. Si sí, le sumamos _1, _2, etc.
                       int contador = 1;
                       while (await Directory(carpetaDestino).exists()) {
                         carpetaDestino = '${rutaBase}_$contador';
                         contador++;
                       }
 
-                      // 4. Creamos la carpeta final con el nombre único
                       await Directory(carpetaDestino).create(recursive: true);
 
-                      int duracionPedazo = 15 * 60; 
+                      // ¡USAMOS LA VARIABLE PARA EL CORTE REAL!
+                      int duracionPedazo = minutosSeleccionados * 60; 
                       int segundosTotales = miAudioSeleccionado!.durationInSeconds;
 
                       for (int i = 0; i < segundosTotales; i += duracionPedazo) {
@@ -186,23 +205,20 @@ class _HomePageState extends State<HomePage> {
                           textoProgreso = "Cocinando parte $numeroDeParte de ${pedazosCalculados.length}...\n(Si Android lanza advertencia, presiona 'Espera')";
                         });
                         
-                        // Respiro de medio segundo para que la pantalla se actualice
                         await Future.delayed(const Duration(milliseconds: 500));
 
-                        // 5. MANDAMOS A CORTAR DIRECTO A SU NUEVA CARPETA EXCLUSIVA
                         await carnicero.cortarPedazo(
                           miAudioSeleccionado!.path,
                           inicio,
                           fin,
                           miAudioSeleccionado!.name,
                           numeroDeParte,
-                          carpetaDestino, // <--- Va directo a su subcarpeta
+                          carpetaDestino, 
                         );
                       }
 
                       setState(() { estaCortando = false; }); 
                       
-                      // Mostramos la ruta final en el mensajito verde
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -222,8 +238,9 @@ class _HomePageState extends State<HomePage> {
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                     ),
                   ),
-              ], // Fin del bloque "if pedazosCalculados"
-            ], // Fin del bloque "if (miAudioSeleccionado != null)"
+                  const SizedBox(height: 10),
+              ]
+            ], 
           ],
         ),
       ),
