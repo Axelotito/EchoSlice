@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'package:echoslice/core/notification_service.dart';
 import 'package:echoslice/data/audio_repository_impl.dart';
 import 'package:flutter/material.dart';
 import '../../domain/entities/audio_class.dart';
 import '../../domain/usecases/split_audio_usecase.dart';
 import '../../data/services/audio_cutter_service.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -221,7 +223,14 @@ class _HomePageState extends State<HomePage> {
                           }
 
                           setState(() { estaCortando = false; }); 
+
+                          setState(() { estaCortando = false; }); 
                           
+                          await NotificationService.showNotification(
+                            title: '¡Clase rebanada con éxito! 🎧',
+                            body: 'Tus audios de ${miAudioSeleccionado!.name} están listos en Descargas.',
+                          );
+
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(

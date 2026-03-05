@@ -1,26 +1,34 @@
+import 'package:echoslice/core/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'presentation/pages/home_page.dart';
 
-void main (){
-  runApp(const EchoSliceApp());
+
+void main() async {
+  // 3. Nos aseguramos de que los motores de Flutter estén encendidos
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 4. ¡Despertamos al cartero y pedimos permiso!
+  await NotificationService.init();
+
+  runApp(const MyApp());
 }
 
-class EchoSliceApp extends StatelessWidget{
-  const EchoSliceApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'EchoSlice',
-      debugShowCheckedModeBanner: false, // no mostrara la linea de modo debug
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
-          brightness : Brightness.dark, //Modo oscuro god
+          brightness: Brightness.dark, 
         ),
         useMaterial3: true,
       ),
-      home: const HomePage(), // se llama la pantalla principal.
+      home: const HomePage(),
     );
   }
 }
