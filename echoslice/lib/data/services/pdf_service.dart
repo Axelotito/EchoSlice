@@ -70,7 +70,8 @@ class PdfService {
       ),
     );
     // --- 1. CREAMOS LA CARPETA EXCLUSIVA PARA LOS PDFs ---
-    final directorioNotas = Directory('/storage/emulated/0/Download/EchoSlice_Apuntes');
+    final directorioNotas = Directory('/storage/emulated/0/Download/EchoSlice/Apuntes');
+    
     if (!await directorioNotas.exists()) {
       await directorioNotas.create(recursive: true);
     }

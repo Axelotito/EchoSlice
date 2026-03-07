@@ -23,7 +23,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   // Función privada que va a la memoria del teléfono
   Future<List<Directory>> _cargarHistorial() async {
-    final directorioBase = Directory('/storage/emulated/0/Download/EchoSlice');
+    final directorioBase = Directory('/storage/emulated/0/Download/EchoSlice/Audios');
     
     if (await directorioBase.exists()) {
       final entidades = directorioBase.listSync();

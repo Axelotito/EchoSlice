@@ -191,7 +191,9 @@ class _HomePageState extends State<HomePage> {
                   });
 
                   String nombreLimpio = miAudioSeleccionado!.name.split('.').first;
-                  String rutaBase = '/storage/emulated/0/Download/EchoSlice/$nombreLimpio';
+                  
+                  // --- LA RUTA MAESTRA: AQUÍ OBLIGAMOS A QUE VAYA A /Audios/ ---
+                  String rutaBase = '/storage/emulated/0/Download/EchoSlice/Audios/$nombreLimpio';
                   String carpetaDestino = rutaBase;
                   
                   int contador = 1;
@@ -200,6 +202,7 @@ class _HomePageState extends State<HomePage> {
                     contador++;
                   }
 
+                  // El "recursive: true" es el que hace la magia de crear "Audios" si no existe
                   await Directory(carpetaDestino).create(recursive: true);
 
                   int duracionPedazo = minutosSeleccionados * 60; 
@@ -225,7 +228,7 @@ class _HomePageState extends State<HomePage> {
                   
                   await NotificationService.showNotification(
                     title: '¡Audio procesado! 🎧',
-                    body: 'Tus cortes están listos en Descargas.',
+                    body: 'Tus cortes están listos en Descargas/EchoSlice/Audios',
                   );
               },
               child: Icon(Icons.content_cut, color: goldAccent, size: 28),
