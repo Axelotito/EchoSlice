@@ -40,6 +40,7 @@ dependencies:
   simple_audio_trimmer: ^0.1.4
   flutter_local_notifications: ^21.0.0
   workmanager: ^0.9.0+3
+  google_generative_ai: ^0.4.7
 
 dev_dependencies:
   flutter_test:
