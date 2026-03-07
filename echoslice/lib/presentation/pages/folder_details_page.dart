@@ -1,7 +1,11 @@
 import 'dart:io';
+import 'package:echoslice/core/notification_service.dart';
 import 'package:flutter/material.dart';
-// ¡NUEVO! Importamos el motor de audio
 import 'package:just_audio/just_audio.dart';
+
+import '../../data/services/ai_service.dart';
+import '../../data/services/pdf_service.dart';
+
 
 class FolderDetailsPage extends StatefulWidget {
   final Directory carpeta;
@@ -13,28 +17,27 @@ class FolderDetailsPage extends StatefulWidget {
 
 class _FolderDetailsPageState extends State<FolderDetailsPage> {
   late Future<List<File>> _archivosFuture;
-  
-  // --- MEJOR PRÁCTICA: Variables de estado del Reproductor ---
   final AudioPlayer _reproductor = AudioPlayer();
-  String? _archivoSonando; // Guarda la ruta del archivo que está sonando actualmente
+  String? _archivoSonando; 
+
+  // --- VARIABLES PARA LA IA ---
+  final AiService _aiService = AiService();
+  final PdfService _pdfService = PdfService();
+  bool _generandoApuntes = false;
+  String _textoProgresoIa = "";
 
   @override
   void initState() {
     super.initState();
     _archivosFuture = _cargarArchivos();
     
-    // Escuchamos cuando el audio termina por completo para apagar el ícono de "Pause"
     _reproductor.playerStateStream.listen((estado) {
       if (estado.processingState == ProcessingState.completed) {
-        setState(() {
-          _archivoSonando = null;
-        });
+        setState(() { _archivoSonando = null; });
       }
     });
   }
 
-  // MEJOR PRÁCTICA: Siempre hay que "destruir" el reproductor al salir de la pantalla
-  // para que la música no siga sonando como fantasma en el fondo.
   @override
   void dispose() {
     _reproductor.dispose();
@@ -54,26 +57,87 @@ class _FolderDetailsPageState extends State<FolderDetailsPage> {
     return [];
   }
 
-  // --- FUNCIÓN DEL CEREBRO DE REPRODUCCIÓN ---
-  // --- FUNCIÓN DEL CEREBRO DE REPRODUCCIÓN (CORREGIDA) ---
   Future<void> _tocarAudio(String rutaArchivo) async {
     try {
-      // Si tocas el mismo que ya está sonando, se pausa.
       if (_archivoSonando == rutaArchivo && _reproductor.playing) {
         await _reproductor.pause();
         setState(() { _archivoSonando = null; });
       } else {
-
         await _reproductor.setFilePath(rutaArchivo);
- 
         setState(() { _archivoSonando = rutaArchivo; });
-        
         _reproductor.play(); 
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al reproducir: $e')),
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al reproducir: $e')));
+    }
+  }
+
+  // =================================================================
+  // 🤖 EL CEREBRO DE LA ORQUESTACIÓN (MAP-REDUCE)
+  // =================================================================
+  Future<void> _generarApuntesCompletos(List<File> archivos) async {
+    setState(() {
+      _generandoApuntes = true;
+      _textoProgresoIa = "Preparando a Gemini... 🧠";
+    });
+
+    try {
+      List<String> todosLosApuntes = [];
+      
+      // 1. MAP: Procesamos cada audio uno por uno para no saturar la IA
+      // 1. MAP: Procesamos cada audio uno por uno para no saturar la IA
+      for (int i = 0; i < archivos.length; i++) {
+        setState(() {
+          _textoProgresoIa = "Escuchando parte ${i + 1} de ${archivos.length}...\n(Gemini está tomando notas ✍️)";
+        });
+        
+        // Mandamos el audio a la IA y esperamos el texto
+        String apunte = await _aiService.generarApuntesDeAudio(archivos[i]);
+        todosLosApuntes.add(apunte);
+
+        // ¡NUEVO!: Freno de mano quitado. Solo esperamos 4 segundos gracias al modelo Flash
+        if (i < archivos.length - 1) { 
+           await Future.delayed(const Duration(seconds: 4));
+        }
+      }
+
+      setState(() {
+        _textoProgresoIa = "Armando tu PDF de estudio... 📄";
+      });
+
+      // 2. REDUCE: Juntamos todo en un PDF
+      final String nombreClase = widget.carpeta.path.split('/').last;
+      final String rutaPdf = await _pdfService.generarPdf(
+        tituloClase: nombreClase,
+        apuntesPorParte: todosLosApuntes,
+        rutaCarpeta: widget.carpeta.path,
       );
+
+      // 3. ¡AVISAMOS DEL ÉXITO!
+      await NotificationService.showNotification(
+        title: '¡Apuntes de $nombreClase listos! 🎓',
+        body: 'Tu PDF se guardó junto a tus audios.',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ PDF guardado con éxito', style: const TextStyle(color: Colors.white)),
+            backgroundColor: Colors.green.shade800,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error con la IA: $e', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      // Apagamos el estado de carga sin importar qué pase
+      setState(() { _generandoApuntes = false; });
     }
   }
 
@@ -104,24 +168,43 @@ class _FolderDetailsPageState extends State<FolderDetailsPage> {
 
           return Column(
             children: [
+              // --- SECCIÓN MAGIA IA ---
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Generando apuntes de toda la clase... 🚧')),
-                    );
-                  },
-                  icon: const Icon(Icons.auto_awesome, color: Colors.black),
-                  label: const Text('Generar Apuntes Completos', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: goldAccent,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  ),
-                ),
+                child: _generandoApuntes 
+                  ? Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: goldAccent.withValues(alpha: 0.5)),
+                      ),
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(color: goldAccent),
+                          const SizedBox(height: 15),
+                          Text(
+                            _textoProgresoIa, 
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: goldAccent, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ElevatedButton.icon(
+                      onPressed: () => _generarApuntesCompletos(archivos),
+                      icon: const Icon(Icons.auto_awesome, color: Colors.black),
+                      label: const Text('Generar Apuntes Completos', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: goldAccent,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      ),
+                    ),
               ),
               const Divider(color: Colors.white24, indent: 20, endIndent: 20),
+              
+              // --- LISTA DE AUDIOS ---
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -172,7 +255,6 @@ class _ArchivoItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        // Si está sonando, le ponemos un borde dorado para que resalte
         side: estaSonando ? BorderSide(color: goldAccent, width: 1.5) : BorderSide.none,
       ),
       child: ListTile(
@@ -188,7 +270,6 @@ class _ArchivoItemCard extends StatelessWidget {
           )
         ),
         trailing: IconButton(
-          // Cambia dinámicamente el ícono de Play a Pause
           icon: Icon(
             estaSonando ? Icons.pause_circle_filled : Icons.play_circle_fill, 
             color: estaSonando ? goldAccent : Colors.white38, 
