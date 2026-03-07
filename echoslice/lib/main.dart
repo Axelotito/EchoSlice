@@ -1,6 +1,6 @@
+import 'package:echoslice/core/notification_service.dart';
+import 'package:echoslice/presentation/pages/main_screen.dart';
 import 'package:flutter/material.dart';
-import 'presentation/pages/home_page.dart';
-import 'notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'serif',
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: MainScreen(),
     );
   }
 }

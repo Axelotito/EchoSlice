@@ -85,7 +85,7 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 30),
 
-              // --- SELECTOR DE TIEMPO ELEGANTE ---
+              // --- SELECTOR DE TIEMPO ELEGANTE (BLOQUE 1) ---
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
@@ -124,8 +124,40 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
 
+              // --- INTERRUPTOR DE APUNTES IA (BLOQUE 2 - ¡AHORA EN SU PROPIA FILA!) ---
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: cardDark,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: goldAccent.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.auto_awesome, color: goldAccent),
+                        const SizedBox(width: 10),
+                        const Text('Generar Apuntes IA', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                      ],
+                    ),
+                    Switch(
+                      value: false, // Por ahora apagado
+                      activeColor: goldAccent,
+                      onChanged: (bool valor) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('IA en construcción 🚧')),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              
               // --- BOTÓN DE SELECCIONAR AUDIO ---
               GestureDetector(
                 onTap: () async {
