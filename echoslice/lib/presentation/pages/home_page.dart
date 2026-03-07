@@ -6,7 +6,6 @@ import '../../domain/entities/audio_class.dart';
 import '../../domain/usecases/split_audio_usecase.dart';
 import '../../data/services/audio_cutter_service.dart';
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -15,13 +14,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // --- PALETA DE COLORES PREMIUM (Inspirada en tu diseño) ---
-  final Color bgDark = const Color(0xFF1A1A1A); // Fondo gris carbón oscuro
-  final Color cardDark = const Color(0xFF262626); // Tarjetas un poco más claras
-  final Color goldAccent = const Color(0xFFE5C158); // Dorado/Beige elegante
-  final Color textMuted = const Color(0xFFA0A0A0); // Texto secundario grisáceo
-  // ---------------------------------------------------------
-
   final audioRepository = AudioRepositoryImpl();
   AudioClass? miAudioSeleccionado;
   final cerebroCortes = SplitAudioUseCase();
@@ -45,8 +37,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final Color goldAccent = Theme.of(context).primaryColor;
+    final Color cardDark = Theme.of(context).cardColor;
+    final Color textMuted = const Color(0xFFA0A0A0);
+
     return Scaffold(
-      backgroundColor: bgDark, // ¡Fondo Premium!
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -55,45 +50,17 @@ class _HomePageState extends State<HomePage> {
             children: [
               const SizedBox(height: 20),
               
-              // --- APP BAR PERSONALIZADA ---
-              // --- APP BAR PERSONALIZADA Y FUNCIONAL ---
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'EchoSlice',
-                    style: TextStyle(
-                      color: Color(0xFFE5C158), // Dorado
-                      fontSize: 26,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 1.2,
-                      fontFamily: 'serif', 
-                    ),
-                  ),
-                  // MEJOR PRÁCTICA: Usamos const y quitamos botones inútiles
-                  IconButton(
-                    icon: const Icon(Icons.folder_special, color: Color(0xFFE5C158), size: 28),
-                    tooltip: 'Ver Historial de Cortes',
-                    onPressed: () {
-                      // Aquí pondremos la navegación a la pantalla de Historial
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Próximamente: Historial y Notas IA 🚀')),
-                      );
-                    },
-                  ),
-                ],
-              ),
+              // 1. APLICANDO MEJOR PRÁCTICA #1: Usamos un Widget separado para el título
+              _TituloCentrado(goldAccent: goldAccent),
               const SizedBox(height: 30),
 
-              // --- SELECTOR DE TIEMPO ELEGANTE (BLOQUE 1) ---
+              // --- SELECTOR DE TIEMPO ELEGANTE ---
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
                   color: cardDark,
                   borderRadius: BorderRadius.circular(15),
-                  boxShadow: const [
-                    BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
-                  ],
+                  boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -126,38 +93,10 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 15),
 
-              // --- INTERRUPTOR DE APUNTES IA (BLOQUE 2 - ¡AHORA EN SU PROPIA FILA!) ---
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: cardDark,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: goldAccent.withOpacity(0.3)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.auto_awesome, color: goldAccent),
-                        const SizedBox(width: 10),
-                        const Text('Generar Apuntes IA', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                      ],
-                    ),
-                    Switch(
-                      value: false, // Por ahora apagado
-                      activeColor: goldAccent,
-                      onChanged: (bool valor) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('IA en construcción 🚧')),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
+              // 2. APLICANDO MEJOR PRÁCTICA #1: Usamos un Widget separado para la IA
+              _InterruptorIA(goldAccent: goldAccent, cardDark: cardDark),
               const SizedBox(height: 20),
-              
+
               // --- BOTÓN DE SELECCIONAR AUDIO ---
               GestureDetector(
                 onTap: () async {
@@ -174,9 +113,6 @@ class _HomePageState extends State<HomePage> {
                     color: cardDark,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: goldAccent.withValues(alpha: 0.3), width: 1),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
-                    ],
                   ),
                   child: Column(
                     children: [
@@ -213,11 +149,7 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         CircularProgressIndicator(color: goldAccent, strokeWidth: 3),
                         const SizedBox(height: 15),
-                        Text(
-                          textoProgreso, 
-                          style: TextStyle(color: goldAccent, fontSize: 16),
-                          textAlign: TextAlign.center,
-                        ),
+                        Text(textoProgreso, style: TextStyle(color: goldAccent, fontSize: 16)),
                       ],
                     ),
                   ),
@@ -229,18 +161,12 @@ class _HomePageState extends State<HomePage> {
                         return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: cardDark,
-                            borderRadius: BorderRadius.circular(15),
-                          ),
+                          decoration: BoxDecoration(color: cardDark, borderRadius: BorderRadius.circular(15)),
                           child: Row(
                             children: [
                               Icon(Icons.graphic_eq, color: goldAccent, size: 24),
                               const SizedBox(width: 15),
-                              Text(
-                                pedazosCalculados[index],
-                                style: const TextStyle(color: Colors.white70, fontSize: 15),
-                              ),
+                              Text(pedazosCalculados[index], style: const TextStyle(color: Colors.white70, fontSize: 15)),
                             ],
                           ),
                         );
@@ -254,25 +180,11 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       
-      // --- EL BOTÓN FLOTANTE (ESTILO NEUMORFICO CON BRILLO) ---
       floatingActionButton: (miAudioSeleccionado != null && !estaCortando)
-          ? Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: goldAccent.withValues(alpha: 0.3), // El brillo dorado sutil
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: FloatingActionButton(
-                backgroundColor: cardDark,
-                shape: CircleBorder(
-                  side: BorderSide(color: goldAccent, width: 1.5),
-                ),
-                onPressed: () async {
+          ? FloatingActionButton(
+              backgroundColor: cardDark,
+              shape: CircleBorder(side: BorderSide(color: goldAccent, width: 1.5)),
+              onPressed: () async {
                   setState(() { 
                     estaCortando = true; 
                     textoProgreso = "Preparando cortes...";
@@ -300,19 +212,12 @@ class _HomePageState extends State<HomePage> {
 
                     int numeroDeParte = (i ~/ duracionPedazo) + 1;
 
-                    setState(() { 
-                      textoProgreso = "Procesando parte $numeroDeParte de ${pedazosCalculados.length}...";
-                    });
-                    
+                    setState(() { textoProgreso = "Procesando parte $numeroDeParte..."; });
                     await Future.delayed(const Duration(milliseconds: 500));
 
                     await carnicero.cortarPedazo(
-                      miAudioSeleccionado!.path,
-                      inicio,
-                      fin,
-                      miAudioSeleccionado!.name,
-                      numeroDeParte,
-                      carpetaDestino, 
+                      miAudioSeleccionado!.path, inicio, fin,
+                      miAudioSeleccionado!.name, numeroDeParte, carpetaDestino, 
                     );
                   }
 
@@ -322,25 +227,74 @@ class _HomePageState extends State<HomePage> {
                     title: '¡Audio procesado! 🎧',
                     body: 'Tus cortes están listos en Descargas.',
                   );
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('✅ Guardado en:\n$carpetaDestino', style: const TextStyle(color: Colors.white)),
-                        backgroundColor: cardDark,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(color: goldAccent, width: 1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: Icon(Icons.content_cut, color: goldAccent, size: 28), // Icono de tijeras como en tu imagen
-              ),
+              },
+              child: Icon(Icons.content_cut, color: goldAccent, size: 28),
             )
           : null,
+    );
+  }
+}
+
+// =====================================================================
+// 🧱 WIDGETS SEPARADOS (MEJOR PRÁCTICA #1: Refactorizar en Widgets)
+// =====================================================================
+
+class _TituloCentrado extends StatelessWidget {
+  final Color goldAccent;
+  const _TituloCentrado({required this.goldAccent});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center( // <--- AQUÍ ESTÁ EL TÍTULO PERFECTAMENTE CENTRADO
+      child: Text(
+        'EchoSlice',
+        style: TextStyle(
+          color: goldAccent,
+          fontSize: 32,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 2.0,
+          fontFamily: 'serif', 
+        ),
+      ),
+    );
+  }
+}
+
+class _InterruptorIA extends StatelessWidget {
+  final Color goldAccent;
+  final Color cardDark;
+  const _InterruptorIA({required this.goldAccent, required this.cardDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: goldAccent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome, color: goldAccent),
+              const SizedBox(width: 10),
+              const Text('Generar Apuntes IA', style: TextStyle(color: Colors.white70, fontSize: 16)),
+            ],
+          ),
+          Switch(
+            value: false, 
+            activeColor: goldAccent,
+            onChanged: (bool valor) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('IA en construcción 🚧')),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
