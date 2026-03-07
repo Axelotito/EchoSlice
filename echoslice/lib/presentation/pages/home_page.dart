@@ -15,6 +15,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // --- PALETA DE COLORES PREMIUM (Inspirada en tu diseño) ---
+  final Color bgDark = const Color(0xFF1A1A1A); // Fondo gris carbón oscuro
+  final Color cardDark = const Color(0xFF262626); // Tarjetas un poco más claras
+  final Color goldAccent = const Color(0xFFE5C158); // Dorado/Beige elegante
+  final Color textMuted = const Color(0xFFA0A0A0); // Texto secundario grisáceo
+  // ---------------------------------------------------------
+
   final audioRepository = AudioRepositoryImpl();
   AudioClass? miAudioSeleccionado;
   final cerebroCortes = SplitAudioUseCase();
@@ -39,226 +46,269 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('EchoSlice 🎧'),
-        centerTitle: true,
-        elevation: 2,
-      ),
-      // ¡NUEVO! SafeArea protege tu app de la barra de gestos y la cámara
+      backgroundColor: bgDark, // ¡Fondo Premium!
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0), // Un respiro a los lados
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 20), // Espacio arriba
-                
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 20),
+              
+              // --- APP BAR PERSONALIZADA ---
+              // --- APP BAR PERSONALIZADA Y FUNCIONAL ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'EchoSlice',
+                    style: TextStyle(
+                      color: Color(0xFFE5C158), // Dorado
+                      fontSize: 26,
+                      fontWeight: FontWeight.w400,
+                      letterSpacing: 1.2,
+                      fontFamily: 'serif', 
+                    ),
+                  ),
+                  // MEJOR PRÁCTICA: Usamos const y quitamos botones inútiles
+                  IconButton(
+                    icon: const Icon(Icons.folder_special, color: Color(0xFFE5C158), size: 28),
+                    tooltip: 'Ver Historial de Cortes',
+                    onPressed: () {
+                      // Aquí pondremos la navegación a la pantalla de Historial
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Próximamente: Historial y Notas IA 🚀')),
+                      );
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 30),
+
+              // --- SELECTOR DE TIEMPO ELEGANTE ---
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(
+                  color: cardDark,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Cortar en pedazos de: ', style: TextStyle(fontSize: 16)),
-                    DropdownButton<int>(
-                      value: minutosSeleccionados,
-                      items: const [
-                        DropdownMenuItem(value: 5, child: Text('5 minutos')),
-                        DropdownMenuItem(value: 10, child: Text('10 minutos')),
-                        DropdownMenuItem(value: 15, child: Text('15 minutos')),
-                        DropdownMenuItem(value: 20, child: Text('20 minutos')),
-                        DropdownMenuItem(value: 30, child: Text('30 minutos')),
-                        DropdownMenuItem(value: 60, child: Text('1 Hora')),
-                      ],
-                      onChanged: (int? nuevoValor) {
-                        if (nuevoValor != null) {
-                          setState(() { minutosSeleccionados = nuevoValor; });
-                          _recalcularLista(); 
-                        }
-                      },
+                    Text('Segmentos de corte:', style: TextStyle(color: textMuted, fontSize: 16)),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: minutosSeleccionados,
+                        dropdownColor: cardDark,
+                        icon: Icon(Icons.keyboard_arrow_down, color: goldAccent),
+                        style: TextStyle(color: goldAccent, fontSize: 16, fontWeight: FontWeight.bold),
+                        items: const [
+                          DropdownMenuItem(value: 5, child: Text('5 min')),
+                          DropdownMenuItem(value: 10, child: Text('10 min')),
+                          DropdownMenuItem(value: 15, child: Text('15 min')),
+                          DropdownMenuItem(value: 20, child: Text('20 min')),
+                          DropdownMenuItem(value: 30, child: Text('30 min')),
+                          DropdownMenuItem(value: 60, child: Text('1 Hora')),
+                        ],
+                        onChanged: (int? nuevoValor) {
+                          if (nuevoValor != null) {
+                            setState(() { minutosSeleccionados = nuevoValor; });
+                            _recalcularLista(); 
+                          }
+                        },
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+              ),
+              const SizedBox(height: 20),
 
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final audioFile = await audioRepository.pickAudioFile();
-                    if (audioFile != null) {
-                      setState(() { miAudioSeleccionado = audioFile; });
-                      _recalcularLista();
-                    }
-                  },
-                  icon: const Icon(Icons.folder_open, size: 28),
-                  label: const Text('Seleccionar Audio', style: TextStyle(fontSize: 18)),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
+              // --- BOTÓN DE SELECCIONAR AUDIO ---
+              GestureDetector(
+                onTap: () async {
+                  final audioFile = await audioRepository.pickAudioFile();
+                  if (audioFile != null) {
+                    setState(() { miAudioSeleccionado = audioFile; });
+                    _recalcularLista();
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: cardDark,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: goldAccent.withValues(alpha: 0.3), width: 1),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4)),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(Icons.audio_file_outlined, color: goldAccent, size: 40),
+                      const SizedBox(height: 10),
+                      Text(
+                        miAudioSeleccionado == null ? 'Cargar grabación' : 'Cambiar archivo',
+                        style: TextStyle(color: goldAccent, fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ],
                   ),
                 ),
-                
-                const SizedBox(height: 30),
+              ),
+              const SizedBox(height: 30),
 
-                if (miAudioSeleccionado != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.deepPurple.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.deepPurpleAccent),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+              // --- LA LISTA DE CORTES ---
+              if (miAudioSeleccionado != null) ...[
+                Text(
+                  miAudioSeleccionado!.name,
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Duración total: ${miAudioSeleccionado!.durationInSeconds ~/ 60}m ${miAudioSeleccionado!.durationInSeconds % 60}s',
+                  style: TextStyle(color: textMuted, fontSize: 14),
+                ),
+                const SizedBox(height: 20),
+
+                if (estaCortando) ...[
+                  Center(
+                    child: Column(
                       children: [
-                        const Icon(Icons.audio_file, color: Colors.deepPurpleAccent, size: 30),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              width: 200, 
-                              child: Text(
-                                miAudioSeleccionado!.name,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Duración: ${miAudioSeleccionado!.durationInSeconds ~/ 60}m ${miAudioSeleccionado!.durationInSeconds % 60}s',
-                              style: const TextStyle(color: Colors.greenAccent),
-                            ),
-                          ],
+                        CircularProgressIndicator(color: goldAccent, strokeWidth: 3),
+                        const SizedBox(height: 15),
+                        Text(
+                          textoProgreso, 
+                          style: TextStyle(color: goldAccent, fontSize: 16),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                     ),
                   ),
-                  
-                  const SizedBox(height: 20),
-                
-                if (pedazosCalculados.isNotEmpty) ...[
-                  
-                  // --- LA MAGIA MOVIDA ARRIBA ---
-                  // Si está cortando, mostramos la carga AQUÍ, bien visible
-                  if (estaCortando) ...[
-                    const CircularProgressIndicator(color: Colors.amber),
-                    const SizedBox(height: 10),
-                    Text(
-                      textoProgreso, 
-                      style: const TextStyle(color: Colors.amber, fontSize: 16, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                  ] else ...[
-                    // Si no está cortando, mostramos el título normal
-                    Text('Cortes de $minutosSeleccionados minutos:', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 10),
-                  ],
-                  // ------------------------------
-                  
+                ] else ...[
                   Expanded(
                     child: ListView.builder(
                       itemCount: pedazosCalculados.length,
                       itemBuilder: (context, index) {
-                        return Card(
-                          color: Colors.deepPurple.withValues(alpha: 0.1),
-                          child: ListTile(
-                            leading: const Icon(Icons.content_cut, color: Colors.amber),
-                            title: Text(pedazosCalculados[index]),
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: cardDark,
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.graphic_eq, color: goldAccent, size: 24),
+                              const SizedBox(width: 15),
+                              Text(
+                                pedazosCalculados[index],
+                                style: const TextStyle(color: Colors.white70, fontSize: 15),
+                              ),
+                            ],
                           ),
                         );
                       },
                     ),
                   ),
-                  
-                  const SizedBox(height: 10),
-
-                  // Si NO está cortando, mostramos el botón
-                  if (!estaCortando)
-                    ElevatedButton.icon(
-                        onPressed: () async {
-                          setState(() { 
-                            estaCortando = true; 
-                            // ¡TEXTO LIMPIO! Sin advertencias
-                            textoProgreso = "Creando carpeta para tu clase...";
-                          });
-
-                          String nombreLimpio = miAudioSeleccionado!.name.split('.').first;
-                          String rutaBase = '/storage/emulated/0/Download/EchoSlice/$nombreLimpio';
-                          String carpetaDestino = rutaBase;
-                          
-                          int contador = 1;
-                          while (await Directory(carpetaDestino).exists()) {
-                            carpetaDestino = '${rutaBase}_$contador';
-                            contador++;
-                          }
-
-                          await Directory(carpetaDestino).create(recursive: true);
-
-                          int duracionPedazo = minutosSeleccionados * 60; 
-                          int segundosTotales = miAudioSeleccionado!.durationInSeconds;
-
-                          for (int i = 0; i < segundosTotales; i += duracionPedazo) {
-                            int inicio = i;
-                            int fin = i + duracionPedazo;
-                            if (fin > segundosTotales) fin = segundosTotales;
-
-                            int numeroDeParte = (i ~/ duracionPedazo) + 1;
-
-                            setState(() { 
-                              // ¡TEXTO LIMPIO! Solo la información que importa
-                              textoProgreso = "Cortando parte $numeroDeParte de ${pedazosCalculados.length}...";
-                            });
-                            
-                            await Future.delayed(const Duration(milliseconds: 500));
-
-                            await carnicero.cortarPedazo(
-                              miAudioSeleccionado!.path,
-                              inicio,
-                              fin,
-                              miAudioSeleccionado!.name,
-                              numeroDeParte,
-                              carpetaDestino, 
-                            );
-                          }
-
-                          setState(() { estaCortando = false; }); 
-
-                          setState(() { estaCortando = false; }); 
-                          
-                          await NotificationService.showNotification(
-                            title: '¡Clase rebanada con éxito! 🎧',
-                            body: 'Tus audios de ${miAudioSeleccionado!.name} están listos en Descargas.',
-                          );
-
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('✅ ¡Éxito! Audios guardados en:\n$carpetaDestino'),
-                                backgroundColor: Colors.green,
-                                behavior: SnackBarBehavior.floating,
-                                duration: const Duration(seconds: 8),
-                              ),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.auto_fix_high),
-                        label: const Text('¡CORTAR AHORA!', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.amber,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 20), // Un margen final para asegurar que nada pegue al borde
-                  ]
-                ], 
+                ],
               ],
-            ),
+            ],
           ),
         ),
       ),
+      
+      // --- EL BOTÓN FLOTANTE (ESTILO NEUMORFICO CON BRILLO) ---
+      floatingActionButton: (miAudioSeleccionado != null && !estaCortando)
+          ? Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: goldAccent.withValues(alpha: 0.3), // El brillo dorado sutil
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: FloatingActionButton(
+                backgroundColor: cardDark,
+                shape: CircleBorder(
+                  side: BorderSide(color: goldAccent, width: 1.5),
+                ),
+                onPressed: () async {
+                  setState(() { 
+                    estaCortando = true; 
+                    textoProgreso = "Preparando cortes...";
+                  });
+
+                  String nombreLimpio = miAudioSeleccionado!.name.split('.').first;
+                  String rutaBase = '/storage/emulated/0/Download/EchoSlice/$nombreLimpio';
+                  String carpetaDestino = rutaBase;
+                  
+                  int contador = 1;
+                  while (await Directory(carpetaDestino).exists()) {
+                    carpetaDestino = '${rutaBase}_$contador';
+                    contador++;
+                  }
+
+                  await Directory(carpetaDestino).create(recursive: true);
+
+                  int duracionPedazo = minutosSeleccionados * 60; 
+                  int segundosTotales = miAudioSeleccionado!.durationInSeconds;
+
+                  for (int i = 0; i < segundosTotales; i += duracionPedazo) {
+                    int inicio = i;
+                    int fin = i + duracionPedazo;
+                    if (fin > segundosTotales) fin = segundosTotales;
+
+                    int numeroDeParte = (i ~/ duracionPedazo) + 1;
+
+                    setState(() { 
+                      textoProgreso = "Procesando parte $numeroDeParte de ${pedazosCalculados.length}...";
+                    });
+                    
+                    await Future.delayed(const Duration(milliseconds: 500));
+
+                    await carnicero.cortarPedazo(
+                      miAudioSeleccionado!.path,
+                      inicio,
+                      fin,
+                      miAudioSeleccionado!.name,
+                      numeroDeParte,
+                      carpetaDestino, 
+                    );
+                  }
+
+                  setState(() { estaCortando = false; }); 
+                  
+                  await NotificationService.showNotification(
+                    title: '¡Audio procesado! 🎧',
+                    body: 'Tus cortes están listos en Descargas.',
+                  );
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('✅ Guardado en:\n$carpetaDestino', style: const TextStyle(color: Colors.white)),
+                        backgroundColor: cardDark,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(color: goldAccent, width: 1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    );
+                  }
+                },
+                child: Icon(Icons.content_cut, color: goldAccent, size: 28), // Icono de tijeras como en tu imagen
+              ),
+            )
+          : null,
     );
   }
 }

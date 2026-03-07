@@ -1,15 +1,10 @@
-import 'package:echoslice/core/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'presentation/pages/home_page.dart';
-
+import 'notification_service.dart';
 
 void main() async {
-  // 3. Nos aseguramos de que los motores de Flutter estén encendidos
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 4. ¡Despertamos al cartero y pedimos permiso!
   await NotificationService.init();
-
   runApp(const MyApp());
 }
 
@@ -18,14 +13,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // --- MEJOR PRÁCTICA: TEMA GLOBAL DEFINIDO AQUÍ ---
     return MaterialApp(
       title: 'EchoSlice',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.dark, 
-        ),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF1A1A1A), // Fondo carbón
+        primaryColor: const Color(0xFFE5C158), // Acento dorado
+        cardColor: const Color(0xFF262626), // Color de tarjetas
+        fontFamily: 'serif',
         useMaterial3: true,
       ),
       home: const HomePage(),
