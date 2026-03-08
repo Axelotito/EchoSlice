@@ -1,6 +1,7 @@
 import 'dart:io';
+import 'package:echoslice/presentation/pages/folder_details_page.dart';
 import 'package:flutter/material.dart';
-import 'folder_details_page.dart';
+import 'package:open_filex/open_filex.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -39,7 +40,7 @@ class _HistoryPageState extends State<HistoryPage> {
       appBar: AppBar(
         backgroundColor: bgDark,
         elevation: 0,
-        title: Text('Clases Cortadas', style: TextStyle(color: goldAccent, fontFamily: 'serif', fontWeight: FontWeight.bold)),
+        title: Text('Audios Cortados', style: TextStyle(color: goldAccent, fontFamily: 'serif', fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: FutureBuilder<List<Directory>>(

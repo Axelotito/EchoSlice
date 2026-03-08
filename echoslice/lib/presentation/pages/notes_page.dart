@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
 
 class NotesPage extends StatefulWidget {
   const NotesPage({super.key});
@@ -66,10 +67,18 @@ class _NotesPageState extends State<NotesPage> {
                   title: Text(nombreArchivo, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   subtitle: Text('Generado el: ${fecha.day}/${fecha.month}/${fecha.year}', style: const TextStyle(color: Colors.grey)),
                   trailing: Icon(Icons.open_in_new, color: goldAccent, size: 20),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ruta: ${archivoPdf.path}')),
-                    );
+                  onTap: () async {
+                    // Abrimos el PDF con el lector que el usuario tenga en su celular
+                    final result = await OpenFilex.open(archivoPdf.path);
+
+                    // Si el usuario no tiene ninguna app para leer PDFs, le avisamos
+                    if (result.type != ResultType.done) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('No tienes una app para leer PDFs instalada 😅')),
+                          );
+                        }
+                    }
                   },
                 ),
               );

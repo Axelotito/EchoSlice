@@ -29,7 +29,16 @@ class _MainScreenState extends State<MainScreen> {
 
     return Scaffold(
       backgroundColor: bgDark,
-      body: _pantallas[_indiceActual], // Muestra la pantalla según el índice
+      body: Stack(
+        children: [
+          Offstage(
+            offstage: _indiceActual != 0,
+            child: const HomePage(),
+          ),
+          if (_indiceActual == 1) const HistoryPage(),
+          if (_indiceActual == 2) const NotesPage(),
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           boxShadow: [
