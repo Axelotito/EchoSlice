@@ -100,7 +100,9 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 flutter_launcher_icons:
-  android: "launcher_icon"
+  android: true
   ios: true
   image_path: "assets/icon.png"
-  min_sdk_android: 21
+  # --- MAGIA PARA ANDROID ---
+  adaptive_icon_background: "#1A1A1A" # Este es un gris casi negro que combina con tu logo
+  adaptive_icon_foreground: "assets/icon.png"
