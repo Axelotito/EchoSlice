@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
 
 class PdfService {
   Future<String> generarPdf({
@@ -62,8 +63,10 @@ class PdfService {
       ),
     );
 
-    // --- CARPETA UNIVERSAL DE APUNTES ---
-    final directorioNotas = Directory('/storage/emulated/0/Download/EchoSlice/Apuntes');
+    // --- LA NUEVA RUTA SEGURA PARA ANDROID 11+ ---
+    final directorioPrincipal = await getExternalStorageDirectory();
+    final directorioNotas = Directory('${directorioPrincipal!.path}/EchoSlice/Apuntes');
+
     if (!await directorioNotas.exists()) {
       await directorioNotas.create(recursive: true);
     }

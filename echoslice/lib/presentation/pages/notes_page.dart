@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 class NotesPage extends StatefulWidget {
   const NotesPage({super.key});
@@ -19,7 +20,10 @@ class _NotesPageState extends State<NotesPage> {
   }
 
   Future<List<File>> _cargarHistorialPdfs() async {
-    final directorioNotas = Directory('/storage/emulated/0/Download/EchoSlice/Apuntes');
+    // LA NUEVA RUTA SEGURA:
+    final directorioPrincipal = await getExternalStorageDirectory();
+    final directorioNotas = Directory('${directorioPrincipal!.path}/EchoSlice/Apuntes');
+
     if (await directorioNotas.exists()) {
       final entidades = directorioNotas.listSync();
       final pdfs = entidades.whereType<File>().where((file) => file.path.endsWith('.pdf')).toList();

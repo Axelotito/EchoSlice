@@ -3,7 +3,8 @@ import 'package:echoslice/core/notification_service.dart';
 import 'package:echoslice/data/audio_repository_impl.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:wakelock_plus/wakelock_plus.dart'; // Escudo Anti-Sueño
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../domain/entities/audio_class.dart';
 import '../../domain/usecases/split_audio_usecase.dart';
@@ -63,7 +64,11 @@ class _HomePageState extends State<HomePage> {
     try {
       // --- FASE 1: CORTAR AUDIO ---
       String nombreLimpio = miAudioSeleccionado!.name.split('.').first;
-      String rutaBase = '/storage/emulated/0/Download/EchoSlice/Audios/$nombreLimpio';
+
+      // LA NUEVA RUTA SEGURA:
+      final directorioPrincipal = await getExternalStorageDirectory();
+      String rutaBase = '${directorioPrincipal!.path}/EchoSlice/Audios/$nombreLimpio';
+
       String carpetaDestino = rutaBase;
       
       int contador = 1;
