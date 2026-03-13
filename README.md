@@ -1,3 +1,4 @@
+![EchoSlice Banner](media/banner.png)
 # EchoSlice 🎧🐱
 **Automated AI-Powered Audio Slicing & Note-Taking Assistant**
 
