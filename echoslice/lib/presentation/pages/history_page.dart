@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:echoslice/presentation/pages/folder_details_page.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -21,8 +20,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   Future<List<Directory>> _cargarHistorialAudios() async {
     // LA NUEVA RUTA SEGURA:
-    final directorioPrincipal = await getExternalStorageDirectory();
-    final directorioBase = Directory('${directorioPrincipal!.path}/EchoSlice/Audios');
+    final directorioBase = Directory('/storage/emulated/0/Download/EchoSlice/Audios');
 
     if (await directorioBase.exists()) {
       final entidades = directorioBase.listSync();
