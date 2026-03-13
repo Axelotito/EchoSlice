@@ -1,27 +1,30 @@
 import 'dart:io';
 import 'package:google_generative_ai/google_generative_ai.dart';
-import '../../api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // NUEVO
 
 class AiService {
-  // MEJOR PRÁCTICA: Usamos final y variables privadas. 
-  // Instanciamos el modelo gemini-1.5-flash porque es rapidísimo y puede "escuchar" audios.
-  final GenerativeModel _model = GenerativeModel(
-    model: 'gemini-2.5-flash', // <--- ¡AQUÍ ESTÁ LA MAGIA!
-    apiKey: ApiConfig.geminiKey,
-  );
-
-  /// Toma un archivo de audio cortado y le pide a Gemini que haga los apuntes.
+  
   Future<String> generarApuntesDeAudio(File archivoAudio) async {
     try {
-      // 1. Leemos el archivo de audio nativo de tu celular
-      final bytes = await archivoAudio.readAsBytes();
+      // 1. OBTENER LA LLAVE DESDE LA MEMORIA DEL TELÉFONO
+      final prefs = await SharedPreferences.getInstance();
+      final apiKey = prefs.getString('gemini_api_key') ?? '';
 
-      // 2. Empaquetamos el audio en un formato que la IA entienda
-      // Nota: Le ponemos 'audio/mp3' genérico, Gemini es lo bastante listo para entender m4a/wav/mp3
+      // Si el usuario no ha puesto su llave, detenemos todo amablemente
+      if (apiKey.isEmpty) {
+        return '⚠️ Error: No has configurado tu API Key de Gemini. Ve a los ajustes de la app para agregarla.';
+      }
+
+      // 2. INICIALIZAMOS EL MODELO CON LA LLAVE DEL USUARIO
+      final GenerativeModel model = GenerativeModel(
+        model: 'gemini-2.5-flash',
+        apiKey: apiKey,
+      );
+
+      final bytes = await archivoAudio.readAsBytes();
       final audioPart = DataPart('audio/mp3', bytes);
 
-      // 3. EL PROMPT MAESTRO (Hackeado: Sin Markdown y SIN Emojis)
-      // 3. EL PROMPT MAESTRO (Inspirado en tu estructura de Obsidian pero en Texto Plano)
+      // 3. TU SÚPER PROMPT MAESTRO
       final prompt = TextPart(
         'Rol: Eres el asistente personal de organización de EchoSlice. '
         'Tu objetivo es transformar audios transcritos o apuntes de clase en notas perfectamente estructuradas.\n\n'
@@ -50,13 +53,11 @@ class AiService {
         'CARPETA SUGERIDA: [Sugiere una ubicación lógica]'
       );
 
-      // 4. Mandamos el paquete (Texto + Audio) a la nube de Google
-      final response = await _model.generateContent([
+      final response = await model.generateContent([
         Content.multi([prompt, audioPart])
       ]);
 
-      // 5. Devolvemos el texto generado, o un mensaje de error si la IA se quedó muda
-      return response.text ?? 'La IA no pudo generar el apunte. Tal vez el audio era puro silencio.';
+      return response.text ?? 'La IA no pudo generar el apunte.';
       
     } catch (e) {
       return 'Error al procesar con IA: $e';

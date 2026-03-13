@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:echoslice/core/notification_service.dart';
 import 'package:echoslice/data/audio_repository_impl.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart'; // Escudo Anti-Sueño
 
 import '../../domain/entities/audio_class.dart';
@@ -102,40 +103,43 @@ class _HomePageState extends State<HomePage> {
         archivos.sort((a, b) => a.path.compareTo(b.path));
 
         List<String> todosLosApuntes = [];
+        
         for (int i = 0; i < archivos.length; i++) {
-          
+          int maxIntentos = 3;
           bool exito = false;
           String apunte = "";
           
-          // --- BUCLE DE REINTENTO INTELIGENTE ---
-          while (!exito) {
-            setState(() { textoProgreso = "✍️ IA analizando parte ${i + 1} de ${archivos.length}..."; });
+          // --- NUEVO BUCLE SEGURO: MÁXIMO 3 INTENTOS ---
+          for (int intento = 1; intento <= maxIntentos; intento++) {
+            setState(() { 
+              textoProgreso = "✍️ IA analizando parte ${i + 1} de ${archivos.length} (Intento $intento/3)..."; 
+            });
             
             apunte = await _aiService.generarApuntesDeAudio(archivos[i]);
             
-            // Si Google nos bloquea temporalmente por rapidez (Quota exceeded / 429)
+            // Si Google nos bloquea por ir muy rápido
             if (apunte.contains('Quota exceeded') || apunte.contains('retry in')) {
-              setState(() { textoProgreso = "Google pide pausa. Esperando 60s para continuar... ⏳"; });
-              await Future.delayed(const Duration(seconds: 60)); // Esperamos 1 minuto y el while lo vuelve a intentar
+              if (intento == maxIntentos) {
+                // Si ya intentamos 3 veces, nos rendimos con esta parte para no trabar la app
+                apunte = "⚠️ Error: Límite de IA de Google alcanzado. Este fragmento no se pudo procesar.";
+                break; 
+              }
+              setState(() { textoProgreso = "Google pide pausa. Esperando 30s... ⏳"; });
+              await Future.delayed(const Duration(seconds: 30));
             } else {
-              exito = true; // Si no hay error, salimos del bucle de reintento
+              exito = true; 
+              break; // ¡Salió bien! Rompemos el bucle de intentos y seguimos
             }
           }
           
           todosLosApuntes.add(apunte);
 
-          // Pausa normal entre archivos para evitar enojar a Google
+          // Pausa extra-larga (35s) entre archivos para asegurar que a Google no le dé un infarto
           if (i < archivos.length - 1) { 
-             setState(() { textoProgreso = "⏳ Enfriando motores (evitando límites)..."; });
-             await Future.delayed(const Duration(seconds: 25)); // Lo subimos a 25s por seguridad
+             setState(() { textoProgreso = "⏳ Enfriando motores por 35s (Regla de Google)..."; });
+             await Future.delayed(const Duration(seconds: 35));
           }
         }
-        setState(() { textoProgreso = "Armando tu PDF de estudio... 📄"; });
-        await _pdfService.generarPdf(
-          tituloClase: nombreLimpio,
-          apuntesPorParte: todosLosApuntes,
-          rutaCarpeta: 'dummy_path', // El PdfService ya sabe dónde guardarlo internamente
-        );
         
         await NotificationService.showNotification(
           title: '¡Operación Completa! 🎓',
@@ -160,6 +164,54 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // --- FUNCIÓN PARA GUARDAR LA API KEY ---
+  void _mostrarDialogoAPI(BuildContext context, Color cardDark, Color goldAccent) async {
+    final prefs = await SharedPreferences.getInstance();
+    TextEditingController keyController = TextEditingController(text: prefs.getString('gemini_api_key') ?? '');
+
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: cardDark,
+            title: Text('Configurar IA 🧠', style: TextStyle(color: goldAccent, fontWeight: FontWeight.bold)),
+            content: TextField(
+              controller: keyController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Tu API Key de Gemini',
+                labelStyle: const TextStyle(color: Colors.grey),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: goldAccent.withValues(alpha: 0.5))),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: goldAccent)),
+              ),
+              obscureText: true, // Oculta la llave con puntitos por seguridad
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: goldAccent),
+                onPressed: () async {
+                  await prefs.setString('gemini_api_key', keyController.text.trim());
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('✅ API Key guardada con éxito')),
+                    );
+                  }
+                },
+                child: const Text('Guardar', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color goldAccent = Theme.of(context).primaryColor;
@@ -175,11 +227,20 @@ class _HomePageState extends State<HomePage> {
             children: [
               const SizedBox(height: 20),
               
-              Center(
-                child: Text(
-                  'EchoSlice',
-                  style: TextStyle(color: goldAccent, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2.0, fontFamily: 'serif'),
-                ),
+              // --- TÍTULO Y BOTÓN DE AJUSTES ---
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 48), // Espacio para centrar el título
+                  Text(
+                    'EchoSlice',
+                    style: TextStyle(color: goldAccent, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2.0, fontFamily: 'serif'),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.settings, color: goldAccent),
+                    onPressed: () => _mostrarDialogoAPI(context, cardDark, goldAccent),
+                  ),
+                ],
               ),
               const SizedBox(height: 30),
 
