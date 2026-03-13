@@ -36,7 +36,7 @@ By combining automated audio processing with **Google Gemini AI**, EchoSlice bri
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/Axelotito/EchoSlice.git](https://github.com/Axelotito/EchoSlice.git)
+    git clone [https://github.com/Axelotito/EchoSlice.git]
     ```
 2.  **Install dependencies:**
     ```bash

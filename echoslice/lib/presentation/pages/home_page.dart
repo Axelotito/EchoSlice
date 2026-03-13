@@ -58,7 +58,6 @@ class _HomePageState extends State<HomePage> {
       textoProgreso = "Preparando cortes...";
     });
 
-    // 1. ACTIVAMOS EL WAKELOCK (Para que Android no mate la app)
     WakelockPlus.enable();
 
     try {
@@ -94,12 +93,17 @@ class _HomePageState extends State<HomePage> {
         );
       }
 
-      // --- FASE 2: IA AUTOMÁTICA (Si el switch está encendido) ---
+      // --- FASE 2: IA AUTOMÁTICA ---
       if (_autoGenerarIA) {
-        setState(() { textoProgreso = "Cortes listos. Despertando a Gemini... 🧠"; });
-        
+        // Pausa de 1 segundo para asegurar que el sistema de archivos reconozca los nuevos audios
+        await Future.delayed(const Duration(seconds: 1));
+
         final directorio = Directory(carpetaDestino);
-        final archivos = directorio.listSync().whereType<File>().toList();
+        // Filtramos para agarrar solo archivos de audio reales
+        final archivos = directorio.listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.m4a') || f.path.endsWith('.mp3') || f.path.endsWith('.wav'))
+            .toList();
         archivos.sort((a, b) => a.path.compareTo(b.path));
 
         List<String> todosLosApuntes = [];
@@ -109,7 +113,6 @@ class _HomePageState extends State<HomePage> {
           bool exito = false;
           String apunte = "";
           
-          // --- NUEVO BUCLE SEGURO: MÁXIMO 3 INTENTOS ---
           for (int intento = 1; intento <= maxIntentos; intento++) {
             setState(() { 
               textoProgreso = "✍️ IA analizando parte ${i + 1} de ${archivos.length} (Intento $intento/3)..."; 
@@ -117,36 +120,43 @@ class _HomePageState extends State<HomePage> {
             
             apunte = await _aiService.generarApuntesDeAudio(archivos[i]);
             
-            // Si Google nos bloquea por ir muy rápido
             if (apunte.contains('Quota exceeded') || apunte.contains('retry in')) {
               if (intento == maxIntentos) {
-                // Si ya intentamos 3 veces, nos rendimos con esta parte para no trabar la app
-                apunte = "⚠️ Error: Límite de IA de Google alcanzado. Este fragmento no se pudo procesar.";
+                apunte = "⚠️ Error: Límite de Google alcanzado en esta parte.";
                 break; 
               }
-              setState(() { textoProgreso = "Google pide pausa. Esperando 30s... ⏳"; });
-              await Future.delayed(const Duration(seconds: 30));
+              setState(() { textoProgreso = "Google saturado. Esperando 45s... ⏳"; });
+              await Future.delayed(const Duration(seconds: 45));
             } else {
               exito = true; 
-              break; // ¡Salió bien! Rompemos el bucle de intentos y seguimos
+              break; 
             }
           }
           
           todosLosApuntes.add(apunte);
 
-          // Pausa extra-larga (35s) entre archivos para asegurar que a Google no le dé un infarto
           if (i < archivos.length - 1) { 
-             setState(() { textoProgreso = "⏳ Enfriando motores por 35s (Regla de Google)..."; });
+             setState(() { textoProgreso = "⏳ Enfriando motores por 35s..."; });
              await Future.delayed(const Duration(seconds: 35));
           }
         }
+
+        // --- ¡EL PASO QUE FALTABA!: GENERAR EL PDF ---
+        setState(() { textoProgreso = "Armando tu PDF de estudio... 📄"; });
+        
+        // Usamos el nombre de la carpeta de cortes como título
+        final String tituloPdf = carpetaDestino.split('/').last;
+        
+        await _pdfService.generarPdf(
+          tituloClase: tituloPdf,
+          apuntesPorParte: todosLosApuntes,
+        );
         
         await NotificationService.showNotification(
           title: '¡Operación Completa! 🎓',
-          body: 'Tus audios y tu PDF inteligente están listos.',
+          body: 'Tus audios y tu PDF inteligente están listos en la biblioteca.',
         );
       } else {
-        // Si el switch estaba apagado, solo avisamos del corte
         await NotificationService.showNotification(
           title: '¡Audios cortados! 🎧',
           body: 'Tus fragmentos están listos en tu biblioteca.',
@@ -158,7 +168,6 @@ class _HomePageState extends State<HomePage> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     } finally {
-      // APAGAMOS EL WAKELOCK AL TERMINAR (Para dejar descansar la batería)
       WakelockPlus.disable();
       setState(() { estaCortando = false; }); 
     }
