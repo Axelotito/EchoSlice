@@ -10,7 +10,7 @@ import '../../domain/usecases/split_audio_usecase.dart';
 import '../../data/services/audio_cutter_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-// Importamos el cerebro y el PDF
+import 'package:permission_handler/permission_handler.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/pdf_service.dart';
 
@@ -60,6 +60,15 @@ class _HomePageState extends State<HomePage> {
     });
 
     WakelockPlus.enable();
+    
+    // --- NUEVO: PEDIR PERMISO EN ANDROID 11+ ---
+    if (await Permission.manageExternalStorage.isDenied) {
+      await Permission.manageExternalStorage.request();
+    }
+    if (await Permission.storage.isDenied) {
+      await Permission.storage.request();
+    }
+    // -------------------------------------------
 
     // --- NUEVO: PEDIR PERMISO EN ANDROID 11+ ---
     if (await Permission.manageExternalStorage.isDenied) {
