@@ -2,10 +2,17 @@ import 'package:echoslice/core/notification_service.dart';
 import 'package:echoslice/presentation/pages/main_screen.dart';
 import 'package:flutter/material.dart';
 
-void main() async {
+void main() {
+  // 1. Aseguramos que el motor de Flutter arranque
   WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.init();
+  
+  // 2. ¡DIBUJAMOS LA APP INMEDIATAMENTE! (Adiós pantalla negra)
   runApp(const MyApp());
+  
+  // 3. Arrancamos las notificaciones en el fondo para que MIUI no se congele
+  NotificationService.init().catchError((error) {
+    debugPrint("MIUI bloqueó las notificaciones iniciales: $error");
+  });
 }
 
 class MyApp extends StatelessWidget {
