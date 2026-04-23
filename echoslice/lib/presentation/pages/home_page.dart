@@ -1,18 +1,14 @@
 import 'dart:io';
-import 'package:echoslice/core/notification_service.dart';
 import 'package:echoslice/data/audio_repository_impl.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../domain/entities/audio_class.dart';
 import '../../domain/usecases/split_audio_usecase.dart';
 import '../../data/services/audio_cutter_service.dart';
-import 'package:permission_handler/permission_handler.dart';
-
-import 'package:permission_handler/permission_handler.dart';
-import '../../data/services/ai_service.dart';
-import '../../data/services/pdf_service.dart';
+import '../../core/notification_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,16 +24,9 @@ class _HomePageState extends State<HomePage> {
   List<String> pedazosCalculados = [];
   final carnicero = AudioCutterService();
   
-  // Servicios de IA
-  final AiService _aiService = AiService();
-  final PdfService _pdfService = PdfService();
-  
   bool estaCortando = false; 
   String textoProgreso = ""; 
   int minutosSeleccionados = 15; 
-  
-  // ¡NUEVO! Variable del Switch
-  bool _autoGenerarIA = false; 
 
   void _recalcularLista() {
     if (miAudioSeleccionado != null) {
@@ -50,8 +39,56 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // --- FUNCIÓN PARA GUARDAR LA API KEY ---
+  void _mostrarDialogoAPI(BuildContext context, Color cardDark, Color goldAccent) async {
+    final prefs = await SharedPreferences.getInstance();
+    TextEditingController keyController = TextEditingController(text: prefs.getString('gemini_api_key') ?? '');
+
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: cardDark,
+            title: Text('Configurar IA 🧠', style: TextStyle(color: goldAccent, fontWeight: FontWeight.bold)),
+            content: TextField(
+              controller: keyController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Tu API Key de Gemini',
+                labelStyle: const TextStyle(color: Colors.grey),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: goldAccent.withValues(alpha: 0.5))),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: goldAccent)),
+              ),
+              obscureText: true, 
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: goldAccent),
+                onPressed: () async {
+                  await prefs.setString('gemini_api_key', keyController.text.trim());
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('✅ API Key guardada con éxito')),
+                    );
+                  }
+                },
+                child: const Text('Guardar', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   // =========================================================
-  // 🤖 PIPELINE AUTOMÁTICO: CORTAR -> IA -> PDF
+  // ✂️ PIPELINE DE CORTE (Fase IA eliminada)
   // =========================================================
   Future<void> _iniciarProcesoMaestro() async {
     setState(() { 
@@ -60,27 +97,16 @@ class _HomePageState extends State<HomePage> {
     });
 
     WakelockPlus.enable();
-    
-    // --- NUEVO: PEDIR PERMISO EN ANDROID 11+ ---
-    if (await Permission.manageExternalStorage.isDenied) {
-      await Permission.manageExternalStorage.request();
-    }
-    if (await Permission.storage.isDenied) {
-      await Permission.storage.request();
-    }
-    // -------------------------------------------
-
-    // --- NUEVO: PEDIR PERMISO EN ANDROID 11+ ---
-    if (await Permission.manageExternalStorage.isDenied) {
-      await Permission.manageExternalStorage.request();
-    }
-    if (await Permission.storage.isDenied) {
-      await Permission.storage.request();
-    }
-    // -------------------------------------------
 
     try {
-      // --- FASE 1: CORTAR AUDIO ---
+      // Pedir permisos en Android 11+
+      if (await Permission.manageExternalStorage.isDenied) {
+        await Permission.manageExternalStorage.request();
+      }
+      if (await Permission.storage.isDenied) {
+        await Permission.storage.request();
+      }
+
       String nombreLimpio = miAudioSeleccionado!.name.split('.').first;
       String rutaBase = '/storage/emulated/0/Download/EchoSlice/Audios/$nombreLimpio';
       String carpetaDestino = rutaBase;
@@ -112,75 +138,10 @@ class _HomePageState extends State<HomePage> {
         );
       }
 
-      // --- FASE 2: IA AUTOMÁTICA ---
-      if (_autoGenerarIA) {
-        // Pausa de 1 segundo para asegurar que el sistema de archivos reconozca los nuevos audios
-        await Future.delayed(const Duration(seconds: 1));
-
-        final directorio = Directory(carpetaDestino);
-        // Filtramos para agarrar solo archivos de audio reales
-        final archivos = directorio.listSync()
-            .whereType<File>()
-            .where((f) => f.path.endsWith('.m4a') || f.path.endsWith('.mp3') || f.path.endsWith('.wav'))
-            .toList();
-        archivos.sort((a, b) => a.path.compareTo(b.path));
-
-        List<String> todosLosApuntes = [];
-        
-        for (int i = 0; i < archivos.length; i++) {
-          int maxIntentos = 3;
-          bool exito = false;
-          String apunte = "";
-          
-          for (int intento = 1; intento <= maxIntentos; intento++) {
-            setState(() { 
-              textoProgreso = "✍️ IA analizando parte ${i + 1} de ${archivos.length} (Intento $intento/3)..."; 
-            });
-            
-            apunte = await _aiService.generarApuntesDeAudio(archivos[i]);
-            
-            if (apunte.contains('Quota exceeded') || apunte.contains('retry in') || apunte.contains('503') || apunte.contains('UNAVAILABLE')) {
-              if (intento == maxIntentos) {
-                apunte = "⚠️ Error: Límite de Google alcanzado en esta parte.";
-                break; 
-              }
-              setState(() { textoProgreso = "Google saturado. Esperando 45s... ⏳"; });
-              await Future.delayed(const Duration(seconds: 45));
-            } else {
-              exito = true; 
-              break; 
-            }
-          }
-          
-          todosLosApuntes.add(apunte);
-
-          if (i < archivos.length - 1) { 
-             setState(() { textoProgreso = "⏳ Enfriando motores por 35s..."; });
-             await Future.delayed(const Duration(seconds: 35));
-          }
-        }
-
-        // --- ¡EL PASO QUE FALTABA!: GENERAR EL PDF ---
-        setState(() { textoProgreso = "Armando tu PDF de estudio... 📄"; });
-        
-        // Usamos el nombre de la carpeta de cortes como título
-        final String tituloPdf = carpetaDestino.split('/').last;
-        
-        await _pdfService.generarPdf(
-          tituloClase: tituloPdf,
-          apuntesPorParte: todosLosApuntes,
-        );
-        
-        await NotificationService.showNotification(
-          title: '¡Operación Completa! 🎓',
-          body: 'Tus audios y tu PDF inteligente están listos en la biblioteca.',
-        );
-      } else {
-        await NotificationService.showNotification(
-          title: '¡Audios cortados! 🎧',
-          body: 'Tus fragmentos están listos en tu biblioteca.',
-        );
-      }
+      await NotificationService.showNotification(
+        title: '¡Audios cortados! 🎧',
+        body: 'Ve al Historial para generar tus apuntes con IA.',
+      );
 
     } catch (e) {
       if (mounted) {
@@ -189,54 +150,6 @@ class _HomePageState extends State<HomePage> {
     } finally {
       WakelockPlus.disable();
       setState(() { estaCortando = false; }); 
-    }
-  }
-
-  // --- FUNCIÓN PARA GUARDAR LA API KEY ---
-  void _mostrarDialogoAPI(BuildContext context, Color cardDark, Color goldAccent) async {
-    final prefs = await SharedPreferences.getInstance();
-    TextEditingController keyController = TextEditingController(text: prefs.getString('gemini_api_key') ?? '');
-
-    if (context.mounted) {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: cardDark,
-            title: Text('Configurar IA 🧠', style: TextStyle(color: goldAccent, fontWeight: FontWeight.bold)),
-            content: TextField(
-              controller: keyController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Tu API Key de Gemini',
-                labelStyle: const TextStyle(color: Colors.grey),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: goldAccent.withValues(alpha: 0.5))),
-                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: goldAccent)),
-              ),
-              obscureText: true, // Oculta la llave con puntitos por seguridad
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: goldAccent),
-                onPressed: () async {
-                  await prefs.setString('gemini_api_key', keyController.text.trim());
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('✅ API Key guardada con éxito')),
-                    );
-                  }
-                },
-                child: const Text('Guardar', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          );
-        },
-      );
     }
   }
 
@@ -259,7 +172,7 @@ class _HomePageState extends State<HomePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const SizedBox(width: 48), // Espacio para centrar el título
+                  const SizedBox(width: 48), 
                   Text(
                     'EchoSlice',
                     style: TextStyle(color: goldAccent, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: 2.0, fontFamily: 'serif'),
@@ -298,36 +211,6 @@ class _HomePageState extends State<HomePage> {
                           }
                         },
                       ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 15),
-
-              // --- INTERRUPTOR DE IA (¡AHORA SÍ FUNCIONA!) ---
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: cardDark,
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: _autoGenerarIA ? goldAccent : goldAccent.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.auto_awesome, color: _autoGenerarIA ? goldAccent : Colors.grey),
-                        const SizedBox(width: 10),
-                        const Text('Generar Apuntes IA', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                      ],
-                    ),
-                    Switch(
-                      value: _autoGenerarIA, 
-                      activeColor: goldAccent,
-                      onChanged: (bool valor) {
-                        setState(() { _autoGenerarIA = valor; });
-                      },
                     ),
                   ],
                 ),
@@ -400,12 +283,11 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       
-      // --- BOTÓN DE INICIO MAESTRO ---
       floatingActionButton: (miAudioSeleccionado != null && !estaCortando)
           ? FloatingActionButton(
               backgroundColor: cardDark,
               shape: CircleBorder(side: BorderSide(color: goldAccent, width: 1.5)),
-              onPressed: _iniciarProcesoMaestro, // <--- LLAMA A LA NUEVA FUNCIÓN AUTOMÁTICA
+              onPressed: _iniciarProcesoMaestro,
               child: Icon(Icons.content_cut, color: goldAccent, size: 28),
             )
           : null,
