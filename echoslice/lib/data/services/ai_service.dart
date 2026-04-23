@@ -60,7 +60,11 @@ class AiService {
       return response.text ?? 'La IA no pudo generar el apunte.';
       
     } catch (e) {
-      return 'Error al procesar con IA: $e';
+      String error = e.toString();
+      if (error.contains('503') || error.contains('UNAVAILABLE')) {
+        return '⚠️ Error 503: Los servidores de Google Gemini están saturados en este momento. La app reintentará automáticamente...';
+      }
+      return 'Error al procesar con IA: $error';
     }
   }
 }

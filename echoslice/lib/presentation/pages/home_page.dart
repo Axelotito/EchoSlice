@@ -139,7 +139,7 @@ class _HomePageState extends State<HomePage> {
             
             apunte = await _aiService.generarApuntesDeAudio(archivos[i]);
             
-            if (apunte.contains('Quota exceeded') || apunte.contains('retry in')) {
+            if (apunte.contains('Quota exceeded') || apunte.contains('retry in') || apunte.contains('503') || apunte.contains('UNAVAILABLE')) {
               if (intento == maxIntentos) {
                 apunte = "⚠️ Error: Límite de Google alcanzado en esta parte.";
                 break; 
