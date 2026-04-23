@@ -6,6 +6,7 @@ import 'package:just_audio/just_audio.dart';
 import '../../data/services/ai_service.dart';
 import '../../data/services/pdf_service.dart';
 
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class FolderDetailsPage extends StatefulWidget {
   final Directory carpeta;
@@ -73,7 +74,7 @@ class _FolderDetailsPageState extends State<FolderDetailsPage> {
   }
 
   // =================================================================
-  // 🤖 EL CEREBRO DE LA ORQUESTACIÓN (MAP-REDUCE)
+  // 🤖 EL CEREBRO DE LA ORQUESTACIÓN (AHORA BLINDADO)
   // =================================================================
   Future<void> _generarApuntesCompletos(List<File> archivos) async {
     setState(() {
@@ -81,23 +82,46 @@ class _FolderDetailsPageState extends State<FolderDetailsPage> {
       _textoProgresoIa = "Preparando a Gemini... 🧠";
     });
 
+    // --- 1. ESCUDO ANTI-SUEÑO ACTIVADO ---
+    // Esto evita que el celular corte el internet o apague el procesador
+    WakelockPlus.enable();
+
     try {
       List<String> todosLosApuntes = [];
       
-      // 1. MAP: Procesamos cada audio uno por uno para no saturar la IA
-      // 1. MAP: Procesamos cada audio uno por uno para no saturar la IA
+      // 2. PROCESAMOS CON MÁXIMO 3 INTENTOS POR ARCHIVO
       for (int i = 0; i < archivos.length; i++) {
-        setState(() {
-          _textoProgresoIa = "Escuchando parte ${i + 1} de ${archivos.length}...\n(Gemini está tomando notas ✍️)";
-        });
+        int maxIntentos = 3;
+        bool exito = false;
+        String apunte = "";
         
-        // Mandamos el audio a la IA y esperamos el texto
-        String apunte = await _aiService.generarApuntesDeAudio(archivos[i]);
+        for (int intento = 1; intento <= maxIntentos; intento++) {
+          setState(() {
+            _textoProgresoIa = "Escuchando parte ${i + 1} de ${archivos.length}...\n(Intento $intento/3 - Gemini ✍️)";
+          });
+          
+          apunte = await _aiService.generarApuntesDeAudio(archivos[i]);
+          
+          // Detectamos si Google nos bloquea por saturación
+          if (apunte.contains('Quota exceeded') || apunte.contains('retry in') || apunte.contains('503') || apunte.contains('UNAVAILABLE')) {
+            if (intento == maxIntentos) {
+              apunte = "⚠️ Error de conexión o servidores saturados. Este fragmento no pudo procesarse.";
+              break; 
+            }
+            setState(() { _textoProgresoIa = "Google saturado. Esperando 40s... ⏳"; });
+            await Future.delayed(const Duration(seconds: 40));
+          } else {
+            exito = true; 
+            break; // ¡Exito! Rompemos el ciclo de intentos y avanzamos
+          }
+        }
+        
         todosLosApuntes.add(apunte);
 
-        // ¡NUEVO!: Freno de mano quitado. Solo esperamos 4 segundos gracias al modelo Flash
+        // Enfriamiento entre cada archivo para no activar las alarmas de spam de Google
         if (i < archivos.length - 1) { 
-           await Future.delayed(const Duration(seconds: 4));
+           setState(() { _textoProgresoIa = "⏳ Enfriando motor de IA por 30s..."; });
+           await Future.delayed(const Duration(seconds: 30));
         }
       }
 
@@ -105,7 +129,7 @@ class _FolderDetailsPageState extends State<FolderDetailsPage> {
         _textoProgresoIa = "Armando tu PDF de estudio... 📄";
       });
 
-      // 2. REDUCE: Juntamos todo en un PDF
+      // 3. JUNTAMOS TODO EN EL PDF
       final String nombreClase = widget.carpeta.path.split('/').last;
       final String rutaPdf = await _pdfService.generarPdf(
         tituloClase: nombreClase,
@@ -113,7 +137,6 @@ class _FolderDetailsPageState extends State<FolderDetailsPage> {
         rutaCarpeta: widget.carpeta.path,
       );
 
-      // 3. ¡AVISAMOS DEL ÉXITO!
       await NotificationService.showNotification(
         title: '¡Apuntes de $nombreClase listos! 🎓',
         body: 'Tu PDF se guardó junto a tus audios.',
@@ -122,7 +145,7 @@ class _FolderDetailsPageState extends State<FolderDetailsPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ PDF guardado con éxito', style: const TextStyle(color: Colors.white)),
+            content: const Text('✅ PDF guardado con éxito', style: TextStyle(color: Colors.white)),
             backgroundColor: Colors.green.shade800,
             duration: const Duration(seconds: 5),
           ),
@@ -136,7 +159,9 @@ class _FolderDetailsPageState extends State<FolderDetailsPage> {
         );
       }
     } finally {
-      // Apagamos el estado de carga sin importar qué pase
+      // --- 4. APAGAMOS EL ESCUDO AL TERMINAR ---
+      // (Para que el celular pueda volver a ahorrar batería)
+      WakelockPlus.disable();
       setState(() { _generandoApuntes = false; });
     }
   }
