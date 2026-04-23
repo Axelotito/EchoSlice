@@ -1,47 +1,63 @@
-import 'dart:ui'; // Necesario para la clase Color
+import 'dart:ui';
+import 'package:flutter/foundation.dart'; // Para debugPrint
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  static bool _isInitialized = false; // <-- Seguro anti-fallos
 
   static Future<void> init() async {
-    // --- MAGIA DEL ÍCONO: Usamos tu silueta blanca en lugar del launcher por defecto ---
-    const AndroidInitializationSettings ajustesAndroid = AndroidInitializationSettings('ic_notification');
+    if (_isInitialized) return; // Si ya se inicializó, no lo hacemos de nuevo
 
-    const InitializationSettings ajustesTotales = InitializationSettings(
-      android: ajustesAndroid,
-    );
+    try {
+      const AndroidInitializationSettings ajustesAndroid = AndroidInitializationSettings('ic_notification');
+      
+      const InitializationSettings ajustesTotales = InitializationSettings(
+        android: ajustesAndroid,
+      );
 
-    // Tu FIX 1: Parámetro nombrado 'settings'
-    await _plugin.initialize(settings: ajustesTotales);
+      await _plugin.initialize(settings: ajustesTotales);
 
-    // Tu FIX 2: Permisos correctos
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+      await _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+          
+      _isInitialized = true;
+      debugPrint("✅ Notificaciones inicializadas correctamente");
+    } catch (e) {
+      debugPrint("❌ Error al inicializar notificaciones: $e");
+    }
   }
 
   static Future<void> showNotification({required String title, required String body}) async {
-    const AndroidNotificationDetails detallesAndroid = AndroidNotificationDetails(
-      'canal_echoslice_1', 
-      'Avisos de Corte',
-      importance: Importance.max,
-      priority: Priority.high,
-      // --- MAGIA VISUAL: Ícono y tu color dorado corporativo ---
-      icon: 'ic_notification', 
-      color: Color(0xFFD4AF37), // Pinta el gatito de dorado cuando bajas la barra
-    );
+    // Si por alguna razón de MIUI no se inicializó al arrancar la app, lo forzamos aquí
+    if (!_isInitialized) {
+      await init();
+    }
 
-    const NotificationDetails detallesPlataforma = NotificationDetails(
-      android: detallesAndroid,
-    );
+    try {
+      const AndroidNotificationDetails detallesAndroid = AndroidNotificationDetails(
+        'canal_echoslice_1', 
+        'Avisos de Corte',
+        importance: Importance.max,
+        priority: Priority.high,
+        icon: 'ic_notification', 
+        color: Color(0xFFD4AF37),
+      );
 
-    // Tu FIX 3: Parámetros nombrados para TODO
-    await _plugin.show(
-      id: 0, 
-      title: title, 
-      body: body, 
-      notificationDetails: detallesPlataforma,
-    );
+      const NotificationDetails detallesPlataforma = NotificationDetails(
+        android: detallesAndroid,
+      );
+
+      await _plugin.show(
+        id: DateTime.now().millisecond, // Usamos el tiempo para que no se sobreescriban si mandas varias rápido
+        title: title, 
+        body: body, 
+        notificationDetails: detallesPlataforma,
+      );
+      debugPrint("✅ Notificación enviada: $title");
+    } catch (e) {
+      debugPrint("❌ Error al enviar notificación: $e");
+    }
   }
 }

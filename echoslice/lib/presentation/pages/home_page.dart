@@ -87,9 +87,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // =========================================================
-  // ✂️ PIPELINE DE CORTE (Fase IA eliminada)
-  // =========================================================
   Future<void> _iniciarProcesoMaestro() async {
     setState(() { 
       estaCortando = true; 
@@ -99,12 +96,16 @@ class _HomePageState extends State<HomePage> {
     WakelockPlus.enable();
 
     try {
-      // Pedir permisos en Android 11+
+      // Pedir permisos de almacenamiento y notificaciones
       if (await Permission.manageExternalStorage.isDenied) {
         await Permission.manageExternalStorage.request();
       }
       if (await Permission.storage.isDenied) {
         await Permission.storage.request();
+      }
+      // NUEVO: Pedir permiso de notificaciones (vital para Android 13+)
+      if (await Permission.notification.isDenied) {
+        await Permission.notification.request();
       }
 
       String nombreLimpio = miAudioSeleccionado!.name.split('.').first;
